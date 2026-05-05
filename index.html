@@ -53,12 +53,8 @@
       if (keys.a) tankX -= 5;
       if (keys.d) tankX += 5;
 
-      const tankLeft = 20;
-      const tankRight = 35;
-      const tankTop = 20;
-      const tankBottom = 10;
-      tankX = Math.max(tankLeft, Math.min(canvas.width - tankRight, tankX));
-      tankY = Math.max(tankTop, Math.min(canvas.height - tankBottom, tankY));
+      tankX = Math.max(20, Math.min(canvas.width - 20, tankX));
+      tankY = Math.max(20, Math.min(canvas.height - 20, tankY));
 
       const r = 4;
       for (let i = bullets.length - 1; i >= 0; i--) {
