@@ -15,6 +15,19 @@
     let tankY = 100;
     const keys = { w: false, a: false, s: false, d: false };
     const bullets = [];
+    const enemy = { x: 600, y: 300, width: 40, height: 40, alive: true };
+    let enemyRespawnTimer = null;
+
+    function scheduleEnemyRespawn() {
+      if (enemyRespawnTimer !== null) clearTimeout(enemyRespawnTimer);
+      enemyRespawnTimer = setTimeout(() => {
+        const m = 40;
+        enemy.x = m + enemy.width / 2 + Math.random() * (canvas.width - 2 * m - enemy.width);
+        enemy.y = m + enemy.height / 2 + Math.random() * (canvas.height - 2 * m - enemy.height);
+        enemy.alive = true;
+        enemyRespawnTimer = null;
+      }, 2000);
+    }
 
     function syncKey(e, down) {
       switch (e.key.toLowerCase()) {
@@ -61,6 +74,18 @@
         const b = bullets[i];
         b.x += b.velocityX;
         b.y += b.velocityY;
+
+        if (enemy.alive) {
+          const ex = enemy.x - enemy.width / 2;
+          const ey = enemy.y - enemy.height / 2;
+          if (b.x >= ex && b.x <= ex + enemy.width && b.y >= ey && b.y <= ey + enemy.height) {
+            enemy.alive = false;
+            bullets.splice(i, 1);
+            scheduleEnemyRespawn();
+            continue;
+          }
+        }
+
         if (b.x + r < 0 || b.x - r > canvas.width || b.y + r < 0 || b.y - r > canvas.height) {
           bullets.splice(i, 1);
         }
@@ -93,6 +118,14 @@
       ctx.stroke();
     }
 
+    function drawEnemy(ctx) {
+      if (!enemy.alive) return;
+      ctx.fillStyle = 'red';
+      const left = enemy.x - enemy.width / 2;
+      const top = enemy.y - enemy.height / 2;
+      ctx.fillRect(left, top, enemy.width, enemy.height);
+    }
+
     function drawBullets(ctx) {
       ctx.fillStyle = 'yellow';
       for (const b of bullets) {
@@ -106,6 +139,7 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       updateGame();
       drawTank(ctx, tankX, tankY);
+      drawEnemy(ctx);
       drawBullets(ctx);
       requestAnimationFrame(tick);
     }
