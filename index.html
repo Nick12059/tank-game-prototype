@@ -11,20 +11,28 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
+    let score = 0;
+    let health = 3;
     let tankX = 100;
     let tankY = 100;
     const keys = { w: false, a: false, s: false, d: false };
     const bullets = [];
     const enemy = { x: 600, y: 300, width: 40, height: 40, alive: true };
     let enemyRespawnTimer = null;
+    let gameOver = false;
+    let invulnerableUntil = 0;
+
+    function respawnEnemyAtRandom() {
+      const m = 40;
+      enemy.x = m + enemy.width / 2 + Math.random() * (canvas.width - 2 * m - enemy.width);
+      enemy.y = m + enemy.height / 2 + Math.random() * (canvas.height - 2 * m - enemy.height);
+      enemy.alive = true;
+    }
 
     function scheduleEnemyRespawn() {
       if (enemyRespawnTimer !== null) clearTimeout(enemyRespawnTimer);
       enemyRespawnTimer = setTimeout(() => {
-        const m = 40;
-        enemy.x = m + enemy.width / 2 + Math.random() * (canvas.width - 2 * m - enemy.width);
-        enemy.y = m + enemy.height / 2 + Math.random() * (canvas.height - 2 * m - enemy.height);
-        enemy.alive = true;
+        respawnEnemyAtRandom();
         enemyRespawnTimer = null;
       }, 2000);
     }
@@ -50,7 +58,25 @@
     }
 
     window.addEventListener('keydown', (e) => {
+      if (gameOver && e.code === 'KeyR') {
+        score = 0;
+        health = 3;
+        tankX = 100;
+        tankY = 100;
+        keys.w = keys.a = keys.s = keys.d = false;
+        bullets.length = 0;
+        if (enemyRespawnTimer !== null) {
+          clearTimeout(enemyRespawnTimer);
+          enemyRespawnTimer = null;
+        }
+        respawnEnemyAtRandom();
+        invulnerableUntil = 0;
+        gameOver = false;
+        requestAnimationFrame(tick);
+        return;
+      }
       if (e.code === 'Space') {
+        if (gameOver) return;
         e.preventDefault();
         const tip = getBarrelTip(tankX, tankY);
         bullets.push({ x: tip.x, y: tip.y, velocityX: 15, velocityY: 0 });
@@ -81,6 +107,7 @@
           if (b.x >= ex && b.x <= ex + enemy.width && b.y >= ey && b.y <= ey + enemy.height) {
             enemy.alive = false;
             bullets.splice(i, 1);
+            score += 1;
             scheduleEnemyRespawn();
             continue;
           }
@@ -88,6 +115,34 @@
 
         if (b.x + r < 0 || b.x - r > canvas.width || b.y + r < 0 || b.y - r > canvas.height) {
           bullets.splice(i, 1);
+        }
+      }
+
+      if (enemy.alive) {
+        if (enemy.x < tankX) enemy.x += 1;
+        else if (enemy.x > tankX) enemy.x -= 1;
+        if (enemy.y < tankY) enemy.y += 1;
+        else if (enemy.y > tankY) enemy.y -= 1;
+        enemy.x = Math.max(20, Math.min(canvas.width - 20, enemy.x));
+        enemy.y = Math.max(20, Math.min(canvas.height - 20, enemy.y));
+
+        const half = 20;
+        const tl = tankX - half;
+        const tr = tankX + half;
+        const tt = tankY - half;
+        const tb = tankY + half;
+        const el = enemy.x - half;
+        const er = enemy.x + half;
+        const et = enemy.y - half;
+        const eb = enemy.y + half;
+        const overlap = !(tr < el || er < tl || tb < et || eb < tt);
+        if (overlap && Date.now() >= invulnerableUntil) {
+          health -= 1;
+          invulnerableUntil = Date.now() + 1000;
+          respawnEnemyAtRandom();
+          if (health <= 0) {
+            gameOver = true;
+          }
         }
       }
     }
@@ -135,12 +190,46 @@
       }
     }
 
+    function drawHUD(ctx) {
+      ctx.save();
+      ctx.font = '20px sans-serif';
+      ctx.fillStyle = 'black';
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+      ctx.fillText('Score: ' + score, 10, 10);
+      ctx.textAlign = 'right';
+      ctx.fillText('Health: ' + health, canvas.width - 10, 10);
+      ctx.restore();
+    }
+
+    function drawGameOverScreen(ctx) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'red';
+      ctx.font = '50px sans-serif';
+      ctx.fillText('GAME OVER', cx, cy - 24);
+      ctx.fillStyle = 'black';
+      ctx.font = '20px sans-serif';
+      ctx.fillText('Press R to Restart', cx, cy + 36);
+    }
+
     function tick() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (gameOver) {
+        drawGameOverScreen(ctx);
+        return;
+      }
       updateGame();
+      if (gameOver) {
+        drawGameOverScreen(ctx);
+        return;
+      }
       drawTank(ctx, tankX, tankY);
       drawEnemy(ctx);
       drawBullets(ctx);
+      drawHUD(ctx);
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
