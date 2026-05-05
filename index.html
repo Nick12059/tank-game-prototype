@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="600" style="background-color: lightgray; border: 1px solid black;"></canvas>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let tankX = 100;
+    let tankY = 100;
+    const keys = { w: false, a: false, s: false, d: false };
+    const bullets = [];
+
+    function syncKey(e, down) {
+      switch (e.key.toLowerCase()) {
+        case 'w': keys.w = down; break;
+        case 'a': keys.a = down; break;
+        case 's': keys.s = down; break;
+        case 'd': keys.d = down; break;
+      }
+    }
+    function getBarrelTip(x, y) {
+      const bodyH = 20;
+      const bodyTop = y - bodyH / 2;
+      const turretW = 30;
+      const turretH = 10;
+      const turretLeft = x - turretW / 2;
+      const turretTop = bodyTop - turretH;
+      const barrelY = turretTop + turretH / 2;
+      const barrelStartX = turretLeft + turretW;
+      return { x: barrelStartX + 20, y: barrelY };
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const tip = getBarrelTip(tankX, tankY);
+        bullets.push({ x: tip.x, y: tip.y, velocityX: 15, velocityY: 0 });
+        return;
+      }
+      syncKey(e, true);
+    });
+    window.addEventListener('keyup', (e) => syncKey(e, false));
+
+    function updateGame() {
+      if (keys.w) tankY -= 5;
+      if (keys.s) tankY += 5;
+      if (keys.a) tankX -= 5;
+      if (keys.d) tankX += 5;
+
+      const tankLeft = 20;
+      const tankRight = 35;
+      const tankTop = 20;
+      const tankBottom = 10;
+      tankX = Math.max(tankLeft, Math.min(canvas.width - tankRight, tankX));
+      tankY = Math.max(tankTop, Math.min(canvas.height - tankBottom, tankY));
+
+      const r = 4;
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.velocityX;
+        b.y += b.velocityY;
+        if (b.x + r < 0 || b.x - r > canvas.width || b.y + r < 0 || b.y - r > canvas.height) {
+          bullets.splice(i, 1);
+        }
+      }
+    }
+
+    function drawTank(ctx, x, y) {
+      const bodyW = 40;
+      const bodyH = 20;
+      const bodyLeft = x - bodyW / 2;
+      const bodyTop = y - bodyH / 2;
+
+      ctx.fillStyle = 'orange';
+      ctx.fillRect(bodyLeft, bodyTop, bodyW, bodyH);
+
+      const turretW = 30;
+      const turretH = 10;
+      const turretLeft = x - turretW / 2;
+      const turretTop = bodyTop - turretH;
+      ctx.fillStyle = 'darkorange';
+      ctx.fillRect(turretLeft, turretTop, turretW, turretH);
+
+      const barrelY = turretTop + turretH / 2;
+      const barrelStartX = turretLeft + turretW;
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(barrelStartX, barrelY);
+      ctx.lineTo(barrelStartX + 20, barrelY);
+      ctx.stroke();
+    }
+
+    function drawBullets(ctx) {
+      ctx.fillStyle = 'yellow';
+      for (const b of bullets) {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function tick() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updateGame();
+      drawTank(ctx, tankX, tankY);
+      drawBullets(ctx);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
